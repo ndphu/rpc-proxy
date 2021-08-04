@@ -87,7 +87,7 @@ func startWeb() {
 
 	r.Use(cors.New(c))
 
-	r.POST("/proxy", func(c *gin.Context) {
+	r.POST("/api/proxy", func(c *gin.Context) {
 		var pr proxy.Request
 		if err := c.ShouldBindJSON(&pr); err != nil {
 			c.AbortWithStatusJSON(400, gin.H{"success": false, "error": err.Error()})
@@ -138,8 +138,13 @@ func handleProxyRequest(pr proxy.Request) (*proxy.Response, error) {
 		log.Println("Proxy", "Fail to parse make http request by error", err.Error())
 		return nil, err
 	}
+	log.Println("PROXY: Finished making request to:", pr.Url)
 	defer resp.Body.Close()
 	all, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Println("Fail to read response body by error", err.Error())
+		return nil, err
+	}
 	response := proxy.Response{
 		Success:    true,
 		Error:      "",
