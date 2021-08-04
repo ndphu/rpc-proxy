@@ -1,0 +1,7 @@
+.idea
+*.iml
+app.yaml
+.gcloudignore
+*.html
+*.yml
+/.service_id
