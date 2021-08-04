@@ -51,6 +51,7 @@ func startRmq() {
 				Name:          "proxy:request",
 				ArgumentCount: 1,
 				Handler: func(args []string) (interface{}, error) {
+					fmt.Println("RPC-SERVICE", "Received request")
 					decoded, err := base64.StdEncoding.DecodeString(args[0])
 					if err != nil {
 						return nil, err
@@ -60,8 +61,14 @@ func startRmq() {
 						log.Println("Fail to unmarshal first argument to ProxyRequest object")
 						return nil, err
 					}
-
-					return handleProxyRequest(pr)
+					fmt.Println("RPC-SERVICE", "Handling proxy request...")
+					resp, err := handleProxyRequest(pr)
+					if err != nil {
+						fmt.Println("RPC-SERVICE", "Fail to make proxy request by error", err.Error())
+						return nil, err
+					}
+					fmt.Println("RPC-SERVICE", "Returning response...")
+					return resp, err
 				},
 			},
 		})
