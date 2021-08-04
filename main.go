@@ -132,6 +132,8 @@ func handleProxyRequest(pr proxy.Request) (*proxy.Response, error) {
 			req.Header.Add(header, value)
 		}
 	}
+	log.Println("PROXY:DEBUG", "HTTP_PROXY", os.Getenv("HTTP_PROXY"))
+	log.Println("PROXY:DEBUG", "HTTPS_PROXY", os.Getenv("HTTPS_PROXY"))
 	log.Println("PROXY: Making real request to:", pr.Url)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
