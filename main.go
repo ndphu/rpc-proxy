@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/ndphu/message-handler-lib/service"
 	"io/ioutil"
@@ -17,6 +19,15 @@ import (
 )
 
 func main() {
+
+	fmt.Println("HTTP_PROXY", os.Getenv("HTTP_PROXY"))
+	fmt.Println("HTTPS_PROXY", os.Getenv("HTTPS_PROXY"))
+
+	startWeb()
+	startRmq()
+}
+
+func startRmq() {
 	serviceId := os.Getenv("SERVICE_ID")
 	if serviceId == "" {
 		if s, err := ioutil.ReadFile(".service_id"); err != nil {
@@ -65,6 +76,34 @@ func main() {
 	_ = s.Stop()
 }
 
+func startWeb() {
+	r := gin.Default()
+
+	c := cors.DefaultConfig()
+	c.AllowAllOrigins = true
+	c.AllowCredentials = true
+	c.AllowMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
+	c.AllowHeaders = []string{"Origin", "Authorization", "Content-Type", "Content-Length", "X-Requested-With"}
+
+	r.Use(cors.New(c))
+
+	r.POST("/proxy", func(c *gin.Context) {
+		var pr proxy.Request
+		if err := c.ShouldBindJSON(&pr); err != nil {
+			c.AbortWithStatusJSON(400, gin.H{"success": false, "error": err.Error()})
+			return
+		}
+
+		response, err := handleProxyRequest(pr)
+		if err != nil {
+			c.AbortWithStatusJSON(500, gin.H{"success": false, "error": err.Error()})
+			return
+		}
+		c.JSON(200, response)
+	})
+
+	go r.Run()
+}
 
 func handleProxyRequest(pr proxy.Request) (*proxy.Response, error) {
 	// prepare request body
