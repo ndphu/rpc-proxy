@@ -3,87 +3,20 @@ package main
 import (
 	"bytes"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
-	"github.com/ndphu/message-handler-lib/service"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"os/signal"
 	"rpc-proxy/proxy"
-	"syscall"
 )
 
 func main() {
 
 	fmt.Println("HTTP_PROXY", os.Getenv("HTTP_PROXY"))
 	fmt.Println("HTTPS_PROXY", os.Getenv("HTTPS_PROXY"))
-
-	startWeb()
-	startRmq()
-}
-
-func startRmq() {
-	serviceId := os.Getenv("SERVICE_ID")
-	if serviceId == "" {
-		if s, err := ioutil.ReadFile(".service_id"); err != nil {
-			serviceId = uuid.New().String()
-			if err := ioutil.WriteFile(".service_id", []byte(serviceId), 0755); err != nil {
-				panic(err)
-			}
-		} else {
-			serviceId = string(s)
-		}
-	}
-
-	s := service.NewService(serviceId,
-		service.Description{
-			Name:    "raspberry-proxy-service",
-			Type:    "proxy-service",
-			Version: "0.0.1",
-		},
-		[]service.Action{
-			{
-				Name:          "proxy:request",
-				ArgumentCount: 1,
-				Handler: func(args []string) (interface{}, error) {
-					fmt.Println("RPC-SERVICE", "Received request")
-					decoded, err := base64.StdEncoding.DecodeString(args[0])
-					if err != nil {
-						return nil, err
-					}
-					var pr proxy.Request
-					if err := json.Unmarshal(decoded, &pr); err != nil {
-						log.Println("Fail to unmarshal first argument to ProxyRequest object")
-						return nil, err
-					}
-					fmt.Println("RPC-SERVICE", "Handling proxy request...")
-					resp, err := handleProxyRequest(pr)
-					if err != nil {
-						fmt.Println("RPC-SERVICE", "Fail to make proxy request by error", err.Error())
-						return nil, err
-					}
-					fmt.Println("RPC-SERVICE", "Returning response...")
-					return resp, err
-				},
-			},
-		})
-	if err := s.Start(); err != nil {
-		panic(err)
-	}
-
-	termChan := make(chan os.Signal)
-	signal.Notify(termChan, syscall.SIGINT, syscall.SIGTERM)
-	<-termChan
-	log.Println("Shutdown signal received")
-	_ = s.Stop()
-}
-
-func startWeb() {
 	r := gin.Default()
 
 	c := cors.DefaultConfig()
@@ -109,8 +42,9 @@ func startWeb() {
 		c.JSON(200, response)
 	})
 
-	go r.Run()
+	r.Run()
 }
+
 
 func handleProxyRequest(pr proxy.Request) (*proxy.Response, error) {
 	// prepare request body
